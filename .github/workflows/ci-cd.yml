@@ -1,0 +1,90 @@
+name: CI/CD - OS Service
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore OsService.sln
+
+      - name: Build
+        run: dotnet build OsService.sln --no-restore -c Release
+
+      - name: Test (com coleta de cobertura)
+        run: >
+          dotnet test OsService.sln --no-build -c Release
+          --collect:"XPlat Code Coverage"
+          --results-directory ./coverage
+
+      # Quality gate — SonarQube/SonarCloud analisa o código e falha o pipeline
+      # se a cobertura ficar abaixo de 80% ou se novas issues críticas forem
+      # introduzidas. Requer os secrets SONAR_TOKEN e SONAR_HOST_URL (ou
+      # SONAR_ORGANIZATION/SONAR_PROJECT_KEY para SonarCloud) configurados no
+      # repositório — enquanto não configurados, este passo é pulado.
+      - name: SonarQube Scan
+        if: ${{ env.SONAR_TOKEN != '' }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        uses: SonarSource/sonarqube-scan-action@v4
+        with:
+          args: >
+            -Dsonar.projectKey=oficina-wagyu-os-service
+            -Dsonar.sources=src
+            -Dsonar.tests=tests
+            -Dsonar.cs.opencover.reportsPaths=coverage/**/coverage.opencover.xml
+            -Dsonar.coverage.exclusions=**/Migrations/**
+
+  deploy:
+    name: Deploy no Kubernetes (K3s/EC2)
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build da imagem Docker
+        run: docker build -t oficina-os-service:latest .
+
+      - name: Salva a imagem e envia para a EC2 via SSH
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+          docker save oficina-os-service:latest | gzip | \
+            ssh -i ~/.ssh/id_rsa ubuntu@"$EC2_HOST" \
+            "sudo k3s ctr images import -"
+
+      - name: Aplica os manifestos e reinicia o Deployment
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          scp -i ~/.ssh/id_rsa -r k8s ubuntu@"$EC2_HOST":/tmp/os-service-k8s
+
+          ssh -i ~/.ssh/id_rsa ubuntu@"$EC2_HOST" '
+            sudo kubectl apply -f /tmp/os-service-k8s/00-namespace.yaml &&
+            sudo kubectl apply -f /tmp/os-service-k8s/01-configmap.yaml &&
+            sudo kubectl apply -f /tmp/os-service-k8s/03-os-service-deployment.yaml &&
+            sudo kubectl apply -f /tmp/os-service-k8s/04-hpa.yaml &&
+            sudo kubectl rollout restart deployment/os-service -n oficina-os-service &&
+            sudo kubectl rollout status deployment/os-service -n oficina-os-service --timeout=120s
+          '

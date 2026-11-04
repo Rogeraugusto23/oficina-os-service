@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: os-service-config
+  namespace: oficina-os-service
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
