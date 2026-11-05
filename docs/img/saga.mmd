@@ -1,0 +1,28 @@
+sequenceDiagram
+  autonumber
+  participant O as OS Service (orquestrador)
+  participant B as Billing Service
+  participant E as Execução Service
+  O->>O: Abre OS e envia orçamento (AguardandoAprovacao)
+  O-->>B: OrcamentoEnviadoEvent
+  B->>B: Cria cobrança + preferência Mercado Pago
+  alt Pagamento aprovado
+    B-->>O: PagamentoAprovadoEvent
+    O->>O: Aprova orçamento (EmExecucao)
+    O-->>E: OrcamentoAprovadoEvent
+    E->>E: Enfileira e executa o serviço
+    alt Execução concluída
+      E-->>O: ExecucaoFinalizadaEvent (sucesso)
+      O->>O: OS Finalizada
+    else Execução falhou (compensação)
+      E-->>O: ExecucaoFinalizadaEvent (falha)
+      O->>O: OS Cancelada
+      O-->>B: OrdemServicoCanceladaEvent
+      B->>B: Cancela/estorna cobrança
+    end
+  else Pagamento rejeitado (compensação)
+    B-->>O: PagamentoRejeitadoEvent
+    O->>O: OS Cancelada
+    O-->>B: OrcamentoRejeitadoEvent
+    B->>B: Cancela cobrança
+  end

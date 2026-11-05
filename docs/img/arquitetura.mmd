@@ -1,0 +1,36 @@
+flowchart TB
+  user([Cliente / Atendente]) -->|"JWT (Lambda Auth CPF)"| os
+
+  subgraph K3s["K3s na EC2 - AWS Academy"]
+    os["OS Service :30081<br/>Orquestrador da Saga"]
+    exe["Execução Service :30083<br/>Fila de serviço"]
+    bill["Billing Service :30082<br/>Pagamentos"]
+  end
+
+  subgraph DADOS["Banco por serviço"]
+    rds[("RDS SQL Server<br/>OsServiceDB")]
+    d2[("DynamoDB<br/>execucoes")]
+    d1[("DynamoDB<br/>orcamentos")]
+  end
+
+  subgraph MSG["Mensageria assíncrona"]
+    sns{{"SNS saga-events"}}
+    qos[["SQS os-queue"]]
+    qbi[["SQS billing-queue"]]
+    qex[["SQS execucao-queue"]]
+    sns -->|filtro EventType| qos
+    sns -->|filtro EventType| qbi
+    sns -->|filtro EventType| qex
+  end
+
+  os --- rds
+  bill --- d1
+  exe --- d2
+  bill <-->|"webhook"| mp[Mercado Pago]
+
+  os -->|publica| sns
+  bill -->|publica| sns
+  exe -->|publica| sns
+  qos -->|consome| os
+  qbi -->|consome| bill
+  qex -->|consome| exe
