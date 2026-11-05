@@ -68,3 +68,19 @@ public sealed record ExecucaoFinalizadaEvent : IntegrationEvent
     public bool Sucesso { get; init; }
     public string? MotivoFalha { get; init; }
 }
+
+/// <summary>Consumido: publicado pelo Billing Service quando o pagamento é confirmado.</summary>
+public sealed record PagamentoAprovadoEvent : IntegrationEvent
+{
+    public Guid OrdemServicoId { get; init; }
+    public string NumeroOS { get; init; } = "";
+    public string MercadoPagoPaymentId { get; init; } = "";
+}
+
+/// <summary>Consumido: publicado pelo Billing Service quando o pagamento é recusado.</summary>
+public sealed record PagamentoRejeitadoEvent : IntegrationEvent
+{
+    public Guid OrdemServicoId { get; init; }
+    public string NumeroOS { get; init; } = "";
+    public string? Motivo { get; init; }
+}

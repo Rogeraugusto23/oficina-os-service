@@ -1,4 +1,6 @@
 using Amazon.SimpleNotificationService;
+using Amazon.SQS;
+using OsService.Application.Saga;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -44,6 +46,9 @@ try
     // 1.2 Mensageria (SNS) — publica eventos de integração da Saga
     builder.Services.AddAWSService<IAmazonSimpleNotificationService>();
     builder.Services.AddScoped<IEventPublisher, SnsEventPublisher>();
+    builder.Services.AddAWSService<IAmazonSQS>();
+    builder.Services.AddScoped<SagaOrchestrator>();
+    builder.Services.AddHostedService<SqsEventConsumerBackgroundService>();
 
     // 1.3 Use Cases — módulo OrdensServico
     builder.Services.AddScoped<AbrirOrdemServicoUseCase>();

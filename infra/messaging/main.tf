@@ -15,7 +15,7 @@ locals {
     }
     billing = {
       name   = "oficina-wagyu-billing-queue"
-      events = ["OrcamentoEnviadoEvent", "OrcamentoRejeitadoEvent"]
+      events = ["OrcamentoEnviadoEvent", "OrcamentoRejeitadoEvent", "OrdemServicoCanceladaEvent"]
     }
     execucao = {
       name   = "oficina-wagyu-execucao-queue"
