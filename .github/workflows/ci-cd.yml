@@ -51,6 +51,17 @@ jobs:
                               tot["core"][0] += hit; tot["core"][1] += 1
               if len(files) > 1: break
           pct = lambda k: 100.0 * tot[k][0] / tot[k][1] if tot[k][1] else 0.0
+          # detalhe por classe (as menos cobertas), útil para priorizar testes
+          rows = []
+          for f in files:
+              for pkg in ET.parse(f).getroot().iter("package"):
+                  for cls in pkg.iter("class"):
+                      ls = list(cls.iter("line"))
+                      if not ls: continue
+                      miss = sum(1 for l in ls if int(l.get("hits", "0")) == 0)
+                      if miss: rows.append((miss, len(ls), cls.get("name")))
+          for miss, n, name in sorted(rows, reverse=True)[:25]:
+              print(f"  sem cobertura: {miss}/{n} linhas  {name}")
           print(f"Cobertura de linhas - total: {pct('all'):.1f}% ({tot['all'][0]}/{tot['all'][1]})")
           print(f"Cobertura de linhas - Domain+Application: {pct('core'):.1f}% ({tot['core'][0]}/{tot['core'][1]})")
           minimo = float(os.environ.get("COVERAGE_MIN", "0"))
