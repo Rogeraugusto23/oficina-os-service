@@ -31,6 +31,34 @@ jobs:
           --collect:"XPlat Code Coverage"
           --results-directory ./coverage
 
+      - name: Resumo de cobertura (Domain + Application)
+        env:
+          COVERAGE_MIN: "0"
+        run: |
+          python3 - <<'PY'
+          import glob, os, sys
+          import xml.etree.ElementTree as ET
+          files = glob.glob("coverage/**/coverage.cobertura.xml", recursive=True)
+          tot = {"all": [0, 0], "core": [0, 0]}
+          for f in files:
+              for pkg in ET.parse(f).getroot().iter("package"):
+                  name = pkg.get("name", "")
+                  for cls in pkg.iter("class"):
+                      for ln in cls.iter("line"):
+                          hit = 1 if int(ln.get("hits", "0")) > 0 else 0
+                          tot["all"][0] += hit; tot["all"][1] += 1
+                          if ".Domain" in name or ".Application" in name:
+                              tot["core"][0] += hit; tot["core"][1] += 1
+              if len(files) > 1: break
+          pct = lambda k: 100.0 * tot[k][0] / tot[k][1] if tot[k][1] else 0.0
+          print(f"Cobertura de linhas - total: {pct('all'):.1f}% ({tot['all'][0]}/{tot['all'][1]})")
+          print(f"Cobertura de linhas - Domain+Application: {pct('core'):.1f}% ({tot['core'][0]}/{tot['core'][1]})")
+          minimo = float(os.environ.get("COVERAGE_MIN", "0"))
+          if pct("core") < minimo:
+              print(f"::error::Cobertura {pct('core'):.1f}% abaixo do minimo {minimo}%")
+              sys.exit(1)
+          PY
+
       # Quality gate — SonarQube/SonarCloud analisa o código e falha o pipeline
       # se a cobertura ficar abaixo de 80% ou se novas issues críticas forem
       # introduzidas. Requer os secrets SONAR_TOKEN e SONAR_HOST_URL (ou
