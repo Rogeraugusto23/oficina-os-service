@@ -59,6 +59,7 @@ public class OrdensServicoSagaEventsTests
         var publisher = new FakeEventPublisher();
 
         var ordem = new OsService.Domain.Entities.OrdemServico(Guid.NewGuid(), Guid.NewGuid());
+        ordem.AvancarStatus(); // Recebida -> EmDiagnostico
         ordem.AdicionarServico("Troca de óleo", 150m);
         await repository.AdicionarAsync(ordem);
         await repository.SalvarAlteracoesAsync();
