@@ -123,7 +123,7 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<OsServiceDbContext>();
-        db.Database.Migrate();
+        db.Database.EnsureCreated(); // sem migrations neste serviço: cria o schema do zero no banco dedicado
     }
 
     app.UseMiddleware<CorrelationIdMiddleware>();
