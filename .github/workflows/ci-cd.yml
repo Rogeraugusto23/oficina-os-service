@@ -10,6 +10,8 @@ jobs:
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,10 +32,11 @@ jobs:
           dotnet test OsService.sln --no-build -c Release
           --collect:"XPlat Code Coverage"
           --results-directory ./coverage
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover,cobertura
 
       - name: Resumo de cobertura (Domain + Application)
         env:
-          COVERAGE_MIN: "0"
+          COVERAGE_MIN: "80"
         run: |
           python3 - <<'PY'
           import glob, os, sys
