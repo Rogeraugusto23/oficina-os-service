@@ -13,10 +13,7 @@
 | Execução Service (fila de serviço, DynamoDB) | https://github.com/Rogeraugusto23/oficina-execucao-service |
 | Infraestrutura (Terraform + K3s) | https://github.com/Rogeraugusto23/oficina-wagyu-infra-k8s |
 
-## 3. Vídeo de demonstração
-[Link do vídeo — máx. 15 minutos]
-
-## 4. Arquitetura
+## 3. Arquitetura
 ![Arquitetura](img/arquitetura.png)
 
 - **Execução:** K3s em EC2 (AWS Academy), um namespace e um Deployment (2 réplicas + HPA) por microsserviço, exposto via NodePort (OS 30081, Billing 30082, Execução 30083).
@@ -28,7 +25,7 @@
 - **Observabilidade:** logs estruturados (Serilog JSON) com `CorrelationId` = Id da OS, propagado em todos os eventos, permitindo rastrear uma OS entre os serviços.
 - **CI/CD:** um pipeline por repositório (build → testes com cobertura → quality gate → build da imagem → deploy no K3s), branch `main` como único caminho para produção.
 
-## 5. Saga Pattern
+## 4. Saga Pattern
 ![Fluxo da Saga](img/saga.png)
 
 ### Estratégia: Saga **orquestrada** (orquestrador = OS Service)
@@ -57,20 +54,20 @@ O OS Service (`SagaOrchestrator`) mantém o estado da OS e decide o próximo pas
 - Pagamento rejeitado: OS Cancelada.
 - Falha na execução após pagamento: OS Cancelada e cobrança Cancelada (estorno).
 
-## 6. Justificativa da divisão em microsserviços
+## 5. Justificativa da divisão em microsserviços
 - **OS Service:** dono do ciclo de vida da OS, clientes e veículos. É o núcleo do negócio e o único que precisa de consistência transacional relacional. Também orquestra a Saga.
 - **Billing Service:** responsabilidade distinta (dinheiro), com integração externa (Mercado Pago), requisitos próprios de segurança (webhook com segredo) e padrão de acesso por chave. Isolar reduz o impacto de falhas/instabilidade do provedor de pagamento e o escopo de auditoria.
 - **Execução Service:** representa o trabalho da oficina (fila, início, fim, falha). Escala e evolui em ritmo diferente (por exemplo, futuro app do mecânico) e não precisa do banco relacional.
 - **Limites (bounded contexts):** cada serviço tem seu modelo, banco, pipeline e deploy independentes; mudanças em um não obrigam redeploy dos outros.
 - **Por que 3 e não mais:** granularidade suficiente para demonstrar Saga e bancos distintos sem criar sobrecarga operacional desnecessária para o tamanho do domínio.
 
-## 7. Qualidade
+## 6. Qualidade
 - Clean Architecture em cada serviço (Domain / Application / Infrastructure / API).
 - Testes unitários de domínio e casos de uso, testes da Saga com fakes de mensageria e testes BDD (Gherkin) do fluxo completo.
 - Cobertura de linhas de Domain+Application ≥ 80%, medida e exibida no pipeline.
 - SonarQube/SonarCloud integrado ao pipeline (ativado quando `SONAR_TOKEN` está configurado).
 
-## 8. Débitos técnicos conhecidos (declarados)
+## 7. Débitos técnicos conhecidos (declarados)
 - DynamoDB: buscas por atributos secundários usam `Scan`; em produção usaríamos GSI.
 - Webhook do Mercado Pago simplificado (sem validação de assinatura HMAC oficial); sem AccessToken o Billing opera em modo simulado.
 - Sem Outbox Pattern: publicação do evento ocorre após o commit; falha entre os dois passos exigiria reconciliação.
