@@ -76,3 +76,5 @@ O OS Service (`SagaOrchestrator`) mantém o estado da OS e decide o próximo pas
 - Sem Outbox Pattern: publicação do evento ocorre após o commit; falha entre os dois passos exigiria reconciliação.
 - Segredo JWT compartilhado (em produção: chave assimétrica/IdP).
 - Ambiente AWS Academy (credenciais temporárias, sem Load Balancer, NodePort).
+- Pipeline de Terraform (repositório de infraestrutura) depende de credenciais AWS temporárias do Learner Lab: o job `Plan/Apply` falha quando elas expiram, e a infraestrutura é aplicada manualmente a cada novo lab.
+- Sem IP fixo (Elastic IP não é permitido no Learner Lab): o IP público da EC2 muda quando o lab reinicia.
